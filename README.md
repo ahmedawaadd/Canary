@@ -16,7 +16,7 @@ window.
 
 ## What's "context degradation"?
 
-The longer a chat runs, the more stuff Claude has to hold in its head — your
+The longer a chat runs, the more stuff Claude has to hold in its head - your
 files, your earlier messages, its own answers. At some point the window fills
 up and older details get squeezed out or summarized. When that happens Claude
 quietly starts forgetting things, repeating itself, or drifting off the task.
@@ -29,7 +29,7 @@ of every reply and count up by one each time. As long as the bird shows up and
 the number keeps climbing in order, the instruction is still holding and
 context is healthy.
 
-When the bird **vanishes**, **repeats a number**, or **resets** — that's your
+When the bird **vanishes**, **repeats a number**, or **resets** - that's your
 early warning. The instruction fell out of context, which means other things
 are falling out too. Time to start a fresh session.
 
