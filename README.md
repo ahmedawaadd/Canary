@@ -1,6 +1,6 @@
 # Canary 🐦
 
-> when the bird stops singing, stop trusting the output
+## when the bird stops singing, stop trusting the output
 
 Canary is a context health monitor for Claude Code. It makes Claude end **every
 single reply** with a small bird and a counter:
