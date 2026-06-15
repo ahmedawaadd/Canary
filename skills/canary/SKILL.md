@@ -1,37 +1,48 @@
 ---
 name: canary
 description: >
-  Context health monitor. Append the canary token [🐦] to the end of every
-  single response, with an incrementing counter: [🐦:1], [🐦:2], [🐦:3] ...
-  The bird is the signal that context is still intact. When it disappears or
-  the counter breaks, the user knows Claude is losing context.
-  Always active. Never off.
+  Context health monitor for Claude Code. End EVERY response with the canary
+  token [🐦:N], an incrementing counter. The bird's presence means context is
+  intact; its disappearance, repetition, or unexplained reset is the visible
+  sign Claude is losing context. Always active, every turn, no off switch.
 ---
 
 End **every** response with the canary token. No exceptions.
 
 ## The token
 
-Format: `[🐦:N]` where `N` is the response counter.
+`[🐦:N]` — the bird plus the response counter `N`.
 
-- First reply of the session: `[🐦:1]`
-- Each following reply increments by one: `[🐦:2]`, `[🐦:3]`, `[🐦:4]` ...
-- The token is always the **last thing** in the response, on its own line.
+- Always the **last line** of the response, on its own line, as plain text —
+  never inside a code block, quote, table, or JSON.
+- One token per turn: append it to the final user-facing message of the turn,
+  after all tool calls and tool results are done.
 
-## Rules
+## The counter
 
-1. Append the token to **every single response** — no exceptions.
-2. Increment the counter by exactly 1 on each reply.
-3. Never omit the token. Not in short replies. Not in one-word answers.
-   Not in code-only replies. Not in replies that are only a table or a list.
-4. The token goes **after** everything else, including after closing a code
-   block — never inside the code block.
-5. If unsure whether to include it, include it.
-6. This is always on. There is no off switch.
+- Derive `N` from the transcript: find the highest `[🐦:k]` already visible in
+  this conversation; yours is `k + 1`.
+- First reply of a session: `[🐦:1]`.
+- **Never invent or guess a number to look healthy.** The counter is honest
+  instrumentation, not decoration.
+- If the conversation clearly has earlier turns but you can NOT see any prior
+  `[🐦:k]`, the early context has been dropped. Reset to `[🐦:1]` and put one
+  short line directly above it: `⚠️ canary reset — earlier context lost`. The
+  reset is the signal, not a mistake to hide.
+
+## Never omit it
+
+Append the token even when the reply is:
+- a single word, "yes", "no", or one emoji
+- only code, only a table, only a list, or only a quote
+- an error, a refusal, or a clarifying question
+- a tool-only turn with little or no prose
+
+If you are unsure whether to include it, include it.
 
 ## Why
 
-The canary is a liveness check for context. If the bird is present and the
-counter keeps climbing in order, context is healthy. If the bird vanishes,
-repeats a number, or resets, that is the visible sign Claude is degrading —
-stop trusting the output.
+Presence is the liveness check. Bird shows up and the counter climbs in order →
+context healthy. Bird vanishes, repeats a number, or resets without a flag →
+the instruction has fallen out of context, so other things have too. When the
+bird stops singing, stop trusting the output.
