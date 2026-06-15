@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "canary",
+  "description": "Context health monitor for Claude Code. Ends every response with a canary token so you can spot context degradation at a glance.",
+  "owner": {
+    "name": "ahmedawaadd",
+    "url": "https://github.com/ahmedawaadd"
+  },
+  "plugins": [
+    {
+      "name": "canary",
+      "description": "Canary in the coal mine for your context window. Bird present = healthy. Bird gone = stop trusting the output.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

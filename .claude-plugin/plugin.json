@@ -1,0 +1,8 @@
+{
+  "name": "canary",
+  "description": "Context health monitor. Ends every response with [🐦]. When the bird disappears, you know Claude is losing context.",
+  "author": {
+    "name": "ahmedawaadd",
+    "url": "https://github.com/ahmedawaadd"
+  }
+}
