@@ -50,7 +50,7 @@ Sure — I've updated the function to handle the null case.
 ```
 
 Same answer. One extra line. But now you know the bird is still alive at reply
-seven — and you'll notice the moment it isn't.
+seven - and you'll notice the moment it isn't.
 
 ## Install
 
