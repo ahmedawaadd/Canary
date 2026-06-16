@@ -2,33 +2,25 @@
 name: canary
 description: >
   Context health monitor for Claude Code. End EVERY response with the canary
-  token [🐦:N], an incrementing counter. The bird's presence means context is
-  intact; its disappearance, repetition, or unexplained reset is the visible
-  sign Claude is losing context. Always active, every turn, no off switch.
+  token [🐦:N] provided at the start of each turn. Presence means context is
+  intact; absence or mismatch is caught by the Stop hook. Always active, every
+  turn, no off switch.
 ---
 
 End **every** response with the canary token. No exceptions.
 
 ## The token
 
-`[🐦:N]` — the bird plus the response counter `N`.
+Each turn, the system will tell you exactly which token to emit — for example:
+`Canary: end this response with exactly: [🐦:7]`
 
-- Always the **last line** of the response, on its own line, as plain text —
-  never inside a code block, quote, table, or JSON.
-- One token per turn: append it to the final user-facing message of the turn,
-  after all tool calls and tool results are done.
+Copy it verbatim. Do not calculate, derive, or guess the number — the hook
+owns the counter. Your only job is to echo what you're given.
 
-## The counter
-
-- Derive `N` from the transcript: find the highest `[🐦:k]` already visible in
-  this conversation; yours is `k + 1`.
-- First reply of a session: `[🐦:1]`.
-- **Never invent or guess a number to look healthy.** The counter is honest
-  instrumentation, not decoration.
-- If the conversation clearly has earlier turns but you can NOT see any prior
-  `[🐦:k]`, the early context has been dropped. Reset to `[🐦:1]` and put one
-  short line directly above it: `⚠️ canary reset — earlier context lost`. The
-  reset is the signal, not a mistake to hide.
+The token is always:
+- The **last line** of the response, as plain text
+- On its own line, after all content including closing code fences
+- Never inside a code block, quote, table, or JSON
 
 ## Never omit it
 
@@ -42,7 +34,6 @@ If you are unsure whether to include it, include it.
 
 ## Why
 
-Presence is the liveness check. Bird shows up and the counter climbs in order →
-context healthy. Bird vanishes, repeats a number, or resets without a flag →
-the instruction has fallen out of context, so other things have too. When the
-bird stops singing, stop trusting the output.
+The token is a liveness echo. The hook tells you what to write; if you write
+it correctly, the hook stays silent. If the token is missing or wrong, the hook
+warns the user — catching context loss even when you are not aware it happened.
