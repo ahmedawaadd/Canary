@@ -1,11 +1,35 @@
 {
   "name": "canary",
-  "description": "Context health monitor. Ends every response with [🐦]. When the bird disappears, you know Claude is losing context.",
+  "description": "Context health monitor. Ends every response with [🐦:N]. When the bird disappears or the number is wrong, you know Claude is losing context.",
   "author": {
     "name": "ahmedawaadd",
     "url": "https://github.com/ahmedawaadd"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/canary-session-start.js\"",
+            "timeout": 5,
+            "statusMessage": "Initialising canary..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/canary-prompt.js\"",
+            "timeout": 5,
+            "statusMessage": "Setting canary token..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

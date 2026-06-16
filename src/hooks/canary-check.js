@@ -1,81 +1,94 @@
 #!/usr/bin/env node
-// Canary Stop hook — the deterministic verification layer.
 //
-// WHY: the skill asks the model to emit [🐦:N], but the model that drops the
-// bird is exactly the one whose context is degrading. Self-checking can't be
-// trusted there. This runs OUTSIDE the model, after every turn, so the check
-// never depends on the thing being checked.
+// BREAKING CHANGE vs v1:
+//   v1 validated the bird by comparing consecutive counters it found in the
+//   transcript. That approach had two false-negative failure modes:
+//     1. Arithmetic drift — models miscalculate at high turn counts.
+//     2. Summarisation — the prior [🐦:k] scrolls out of context, model
+//        re-derives a wrong or stale number, hook fires a false alarm.
 //
-// WHAT: read the finished transcript, confirm the final assistant message
-// carries [🐦:N] and that N advanced by 1. If the bird is missing, repeated,
-// reset, or skipped, surface a warning to the user — caught even when the
-// model itself forgot.
+//   This hook instead reads the expected counter from the state file written
+//   by canary-prompt.js. Validation is now: "does the last response contain
+//   exactly [🐦:N] where N is what WE told it to write?" — no model arithmetic
+//   involved at any stage.
+//
+// WHAT: after each turn (Stop event), scan the final assistant message, compare
+//   the bird token against the state-file expected value, warn if wrong, then
+//   increment expected for the next turn regardless of outcome.
 
-const fs = require('fs');
+'use strict';
+const fs     = require('fs');
+const os     = require('os');
+const path   = require('path');
+const crypto = require('crypto');
 
-// Read the hook payload Claude Code pipes in on stdin.
 function readStdin() {
   try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// systemMessage surfaces a one-line warning to the user without blocking the
-// stop. Emit and exit — one warning per turn is enough.
-function warn(msg) {
-  process.stdout.write(JSON.stringify({ systemMessage: msg }));
-  process.exit(0);
+function stateFile(cwd) {
+  const hash = crypto.createHash('sha1').update(cwd || '').digest('hex').slice(0, 12);
+  return path.join(os.tmpdir(), `canary-${hash}.json`);
 }
 
-const TOKEN = /\[🐦:(\d+)\]/g;
+function warn(msg) {
+  process.stdout.write(JSON.stringify({ systemMessage: msg }));
+}
 
 let input;
 try { input = JSON.parse(readStdin() || '{}'); } catch { process.exit(0); }
 
-// No transcript -> nothing to verify. Stay silent rather than cry wolf.
-const path = input.transcript_path;
-if (!path || !fs.existsSync(path)) process.exit(0);
+const cwd  = input.cwd || process.cwd();
+const file = stateFile(cwd);
 
-// The transcript is JSONL. Walk it and pull the canary counter from each
-// assistant message, in order. null = an assistant turn with no bird
-// (intermediate tool-call rounds legitimately have none).
-const counters = [];
-for (const line of fs.readFileSync(path, 'utf8').split('\n')) {
+let state;
+try {
+  state = JSON.parse(fs.readFileSync(file, 'utf8'));
+} catch {
+  // No state file means canary-prompt.js never ran (skill-only install, no
+  // plugin hooks). Fall back silently — don't cry wolf with a false alarm.
+  process.exit(0);
+}
+
+const { expected } = state;
+
+// Read the transcript and pull text from the last assistant message only.
+// Earlier turns are irrelevant — we only care whether THIS turn's token matched.
+const transcriptPath = input.transcript_path;
+if (!transcriptPath || !fs.existsSync(transcriptPath)) {
+  // Increment and write anyway so the sequence stays valid next turn.
+  fs.writeFileSync(file, JSON.stringify({ ...state, expected: expected + 1 }), 'utf8');
+  process.exit(0);
+}
+
+let lastAssistantText = '';
+for (const line of fs.readFileSync(transcriptPath, 'utf8').split('\n')) {
   if (!line.trim()) continue;
   let ev; try { ev = JSON.parse(line); } catch { continue; }
   if (ev.type !== 'assistant' || !ev.message) continue;
-
   const content = ev.message.content;
-  const text = Array.isArray(content)
+  lastAssistantText = Array.isArray(content)
     ? content.filter(b => b.type === 'text').map(b => b.text).join('')
     : (typeof content === 'string' ? content : '');
-  if (!text) continue;
-
-  // Last token in the message is the canonical one for that turn.
-  const found = [];
-  let m; TOKEN.lastIndex = 0;
-  while ((m = TOKEN.exec(text)) !== null) found.push(Number(m[1]));
-  counters.push(found.length ? found[found.length - 1] : null);
 }
 
-if (counters.length === 0) process.exit(0);
+const TOKEN = /\[🐦:(\d+)\]/g;
+const found = [];
+let m; TOKEN.lastIndex = 0;
+while ((m = TOKEN.exec(lastAssistantText)) !== null) found.push(Number(m[1]));
 
-const last = counters[counters.length - 1];
+// Always increment — even on failure the sequence must stay coherent so the
+// next turn's injection is correct.
+fs.writeFileSync(file, JSON.stringify({ ...state, expected: expected + 1 }), 'utf8');
 
-// Primary failure: the latest response shipped with no bird at all.
-if (last === null) {
-  warn('🐦 Canary missing — last response had no [🐦:N]. Context may be degrading; verify the output.');
-}
-
-// Compare against the previous turn that did carry a bird, skipping the
-// nulls from intermediate tool-call rounds.
-const prevBird = [...counters.slice(0, -1)].reverse().find(c => c !== null);
-if (prevBird != null) {
-  if (last === prevBird) {
-    warn(`🐦 Canary stuck at [🐦:${last}] — counter not advancing. Context may be degrading.`);
-  } else if (last < prevBird) {
-    warn(`🐦 Canary reset (${prevBird} -> ${last}) — earlier context was dropped.`);
-  } else if (last > prevBird + 1) {
-    warn(`🐦 Canary skipped (${prevBird} -> ${last}) — turns may be missing from context.`);
+if (found.length === 0) {
+  warn(`🐦 Canary missing — expected [🐦:${expected}] but the response had no token. Context may be degrading.`);
+} else {
+  const actual = found[found.length - 1];
+  if (actual !== expected) {
+    warn(`🐦 Canary mismatch — expected [🐦:${expected}], got [🐦:${actual}]. Context may be degrading.`);
   }
+  // exact match: healthy, stay silent.
 }
 
 process.exit(0);
