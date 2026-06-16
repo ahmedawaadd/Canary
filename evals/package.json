@@ -1,0 +1,12 @@
+{
+  "name": "canary-evals",
+  "version": "1.0.0",
+  "description": "Eval harness: does Canary catch Claude forgetting a secret fact?",
+  "main": "harness.js",
+  "scripts": {
+    "eval": "node harness.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0"
+  }
+}
