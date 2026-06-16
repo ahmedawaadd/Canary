@@ -33,6 +33,15 @@ When the bird **vanishes**, **repeats a number**, or **resets** - that's your
 early warning. The instruction fell out of context, which means other things
 are falling out too. Time to start a fresh session.
 
+## The catch (and the fix)
+
+The skill *asks* Claude to emit the bird — but a model losing context is
+exactly the one that forgets to. So Canary also ships a `Stop` hook: a small
+script that runs **outside** the model after every reply, checks the transcript
+for `[🐦:N]`, and warns you itself if the bird is missing, stuck, reset, or
+skipped. The check doesn't depend on the thing it's checking. Requires Node 18+
+(only used when installed as a plugin via the marketplace).
+
 ## Before / after
 
 **Without Canary:**

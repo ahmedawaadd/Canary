@@ -4,5 +4,19 @@
   "author": {
     "name": "ahmedawaadd",
     "url": "https://github.com/ahmedawaadd"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/canary-check.js\"",
+            "timeout": 5,
+            "statusMessage": "Checking canary..."
+          }
+        ]
+      }
+    ]
   }
 }
